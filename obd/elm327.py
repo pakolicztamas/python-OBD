@@ -32,6 +32,7 @@
 
 import re
 import serial
+import socket
 import time
 import logging
 from .protocols import *
@@ -121,20 +122,52 @@ class ELM327:
         self.__protocol = UnknownProtocol([])
         self.__low_power = False
         self.timeout = timeout
-
-        # ------------- open port -------------
-        try:
-            self.__port = serial.serial_for_url(portname,
-                                                parity=serial.PARITY_NONE,
-                                                stopbits=1,
-                                                bytesize=8,
-                                                timeout=10)  # seconds
-        except serial.SerialException as e:
-            self.__error(e)
-            return
-        except OSError as e:
-            self.__error(e)
-            return
+        if portname[0:6] == "tcp://":
+            try:
+                host_port = portname[6:].split(":")
+                if host_port[1]:
+                    port = int(host_port[1])
+                else:
+                    port = 35000
+                
+                self.__port = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.__port.settimeout(self.timeout)
+                self.__port.connect((host_port[0], port))
+                self.__port.setblocking(1)
+                self.__port.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                self.__port.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+                self.__port.setsockopt(socket.SOL_TCP, socket.TCP_KEEPIDLE, 1)
+                self.__port.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 1)
+                self.__port.setsockopt(socket.SOL_TCP, socket.TCP_KEEPCNT, 1)
+            except socket.error as e:
+                self.__error(e)
+                return 
+            except OSError as e:
+                self.__error(e)
+                return
+        else:   
+            # check if the portname is a valid serial port
+            try:
+                serial.Serial(portname)
+            except serial.SerialException as e:
+                self.__error(e)
+                return
+            except OSError as e:
+                self.__error(e)
+                return
+            # ------------- open port -------------
+            try:
+                self.__port = serial.serial_for_url(portname,
+                                                    parity=serial.PARITY_NONE,
+                                                    stopbits=1,
+                                                    bytesize=8,
+                                                    timeout=10)  # seconds
+            except serial.SerialException as e:
+                self.__error(e)
+                return
+            except OSError as e:
+                self.__error(e)
+                return
 
         # If we start with the IC in the low power state we need to wake it up
         if start_low_power:
@@ -142,16 +175,20 @@ class ELM327:
             time.sleep(1)
 
         # ------------------------ find the ELM's baud ------------------------
-
-        if not self.set_baudrate(baudrate):
-            self.__error("Failed to set baudrate")
-            return
+        # if the portname is a TCP socket, we don't need to set the baudrate
+        if portname[0:6] != "tcp://":
+            if not self.set_baudrate(baudrate):
+                self.__error("Failed to set baudrate")
+                return
 
         # ---------------------------- ATZ (reset) ----------------------------
         try:
             self.__send(b"ATZ", delay=1)  # wait 1 second for ELM to initialize
             # return data can be junk, so don't bother checking
         except serial.SerialException as e:
+            self.__error(e)
+            return
+        except socket.error as e:
             self.__error(e)
             return
 
