@@ -475,9 +475,14 @@ class ELM327:
         self.__status = OBDStatus.NOT_CONNECTED
         self.__protocol = None
 
-        if self.__port is not None:
+        if self.__port is serial.Serial:
             logger.info("closing port")
             self.__write(b"ATZ")
+            self.__port.close()
+            self.__port = None
+        elif self.__port is socket.socket:
+            logger.info("closing socket")
+            self.__port.shutdown(socket.SHUT_RDWR)
             self.__port.close()
             self.__port = None
 
