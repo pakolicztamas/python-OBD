@@ -536,13 +536,24 @@ class ELM327:
             "low-level" function to write a string to the port
         """
 
-        if self.__port:
+        if type(self.__port) == serial.Serial:
             cmd += b"\r"  # terminate with carriage return in accordance with ELM327 and STN11XX specifications
             logger.debug("write: " + repr(cmd))
             try:
                 self.__port.flushInput()  # dump everything in the input buffer
                 self.__port.write(cmd)  # turn the string into bytes and write
                 self.__port.flush()  # wait for the output buffer to finish transmitting
+            except Exception:
+                self.__status = OBDStatus.NOT_CONNECTED
+                self.__port.close()
+                self.__port = None
+                logger.critical("Device disconnected while writing")
+                return
+        elif type(self.__port) == socket.socket:
+            cmd += b"\r"
+            logger.debug("write: " + repr(cmd))
+            try:
+                self.__port.sendall(cmd)
             except Exception:
                 self.__status = OBDStatus.NOT_CONNECTED
                 self.__port.close()
@@ -569,7 +580,10 @@ class ELM327:
         while True:
             # retrieve as much data as possible
             try:
-                data = self.__port.read(self.__port.in_waiting or 1)
+                if type(self.__port) == serial.Serial:
+                    data = self.__port.read(self.__port.in_waiting or 1)
+                elif type(self.__port) == socket.socket:
+                    data = self.__port.recv(1024)
             except Exception:
                 self.__status = OBDStatus.NOT_CONNECTED
                 self.__port.close()
