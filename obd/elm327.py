@@ -482,6 +482,7 @@ class ELM327:
             self.__port = None
         elif self.__port is socket.socket:
             logger.info("closing socket")
+            self.__write(b"ATZ")
             self.__port.shutdown(socket.SHUT_RDWR)
             self.__port.close()
             self.__port = None
