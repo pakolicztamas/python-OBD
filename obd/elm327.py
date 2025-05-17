@@ -133,7 +133,6 @@ class ELM327:
                 self.__port = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.__port.settimeout(self.timeout)
                 self.__port.connect((host_port[0], port))
-                self.__port.setblocking(1)
                 self.__port.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
                 self.__port.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
                 self.__port.setsockopt(socket.SOL_TCP, socket.TCP_KEEPIDLE, 1)
