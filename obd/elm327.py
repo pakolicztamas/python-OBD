@@ -232,12 +232,19 @@ class ELM327:
         # try to communicate with the car, and load the correct protocol parser
         if self.set_protocol(protocol):
             self.__status = OBDStatus.CAR_CONNECTED
-            logger.info("Connected Successfully: PORT=%s BAUD=%s PROTOCOL=%s" %
-                        (
-                            portname,
-                            self.__port.baudrate,
-                            self.__protocol.ELM_ID,
-                        ))
+            if type(self.__port) == serial.Serial:
+                logger.info("Connected Successfully: PORT=%s BAUD=%s PROTOCOL=%s" %
+                            (
+                                portname,
+                                self.__port.baudrate,
+                                self.__protocol.ELM_ID,
+                            ))
+            else:
+                logger.info("Connected Successfully: PORT=%s PROTOCOL=%s" %
+                            (
+                                portname,
+                                self.__protocol.ELM_ID,
+                            ))
         else:
             if self.__status == OBDStatus.OBD_CONNECTED:
                 logger.error("Adapter connected, but the ignition is off")
