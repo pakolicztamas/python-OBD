@@ -307,9 +307,12 @@ class OBD(object):
         if self.fast and cmd.fast and (cmd in self.__frame_counts):
             cmd_string += str(self.__frame_counts[cmd]).encode()
 
-        # if we sent this last time, just send a CR
-        # (CR is added by the ELM327 class)
-        if self.fast and (cmd_string == self.__last_command):
-            cmd_string = b""
+        # The usefulness of this optimization is marginal at best 
+        # but not compatible with some cars
+        
+        # # if we sent this last time, just send a CR
+        # # (CR is added by the ELM327 class)
+        # if self.fast and (cmd_string == self.__last_command):
+        #     cmd_string = b""
 
         return cmd_string
